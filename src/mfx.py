@@ -4,7 +4,11 @@ from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
 
 class IPMReader:
-    def __init__(self, exp, run):
+    def __init__(self, exp, run,
+            components=['mirror_pitch', 'dg1', 'dg2'],
+            mirror_pitch_pv='MR1L4:HOMS:MMS:PITCH',
+            dg1_ipm_pv='MFX:DG1:W8:01',dg1_ipm_version=3,
+            dg2_ipm_pv='MFX-DG2-BMMON',dg2_ipm_version=1):
         """
         Detectors - to get full list, do DetName('detectors'), DetNames('epics') or DetNames('all'):
         - DG1 (DAQ recorded): MFX-DG1-BMMON
@@ -14,10 +18,10 @@ class IPMReader:
         self.exp = exp
         self.run = run
         self.beamline = {}
-        self.beamline['components'] = ['mirror_pitch', 'dg1', 'dg2']
-        self.beamline['mirror_pitch'] = {'pv':'MR1L4:HOMS:MMS:PITCH'}
-        self.beamline['dg1'] = {'pv':'MFX:DG1:W8:01', 'version':3}
-        self.beamline['dg2'] = {'pv':'MFX-DG2-BMMON', 'version':1}
+        self.beamline['components'] = components
+        self.beamline['mirror_pitch'] = {'pv':mirror_pitch_pv}
+        self.beamline['dg1'] = {'pv':dg1_ipm_pv, 'version':dg1_ipm_version}
+        self.beamline['dg2'] = {'pv':dg2_ipm_pv, 'version':dg2_ipm_version}
         self.setup()
 
     def setup(self):
@@ -98,7 +102,7 @@ class IPMReader:
     def get_beam_evt(self, dg="dg1"):
         if self.beamline[dg]['version'] == 3:
             IPM_intensities = self.process_wave8v3(self.beamline[dg]['det_event'])
-            Xpos = IPM_intensities[2] - IPM_intensities[4]
+            Xpos = (IPM_intensities[2] - IPM_intensities[4])/(IPM_intensities[2] + IPM_intensities[4])
             TotInt = np.sum(IPM_intensities)
             return Xpos, TotInt
         else:
