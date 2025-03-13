@@ -43,6 +43,8 @@ class IPMReader:
         self.num_events['total'] = 0
         self.num_events['damaged'] = {}
         self.num_events['damaged']['total'] = 0
+        self.beamline['time_s'] = []
+        self.beamline['event_id'] = []
         for dg in ['dg1', 'dg2']:
             if dg in self.beamline['components']:
                 self.num_events['damaged'][dg] = 0
@@ -51,9 +53,8 @@ class IPMReader:
                 self.beamline[dg]['TotInt'] = []
         if 'mirror_pitch' in self.beamline['components']:
             self.beamline['mirror_pitch']['RBV'] = []
-        self.beamline['time_s'] = []
 
-    def skip_event(self, evt, nevent_max=-1):
+    def skip_event(self, evt, nevent_start=0, nevent_end=-1):
         self.num_events['total'] += 1
         skip_code =  0
         for dg in ['dg1', 'dg2']:
@@ -64,9 +65,11 @@ class IPMReader:
                     skip_code =  1
         if skip_code == 1:
             self.num_events['damaged']['total'] += 1
-        if nevent_max > 0:
-            if self.num_events['total'] > nevent_max:
-                skip_code =  2  
+        if self.num_events['total'] < nevent_start:
+            skip_code = 1
+        if nevent_end > 0:
+            if self.num_events['total'] > nevent_end:
+                skip_code = 2
         return skip_code
 
     def get_det_event(self, evt, dg="dg1"):
@@ -108,14 +111,15 @@ class IPMReader:
         else:
             return self.beamline[dg]['det_event'].X_Position(), self.beamline[dg]['det_event'].TotalIntensity()
     
-    def get_event_data(self, nevent_max=-1):
+    def get_event_data(self, nevent_start=0, nevent_end=-1):
         self.init_run()
         for nevent,evt in enumerate(self.ds.events()):
-            skip_code = self.skip_event(evt,nevent_max)
+            skip_code = self.skip_event(evt,nevent_start,nevent_end)
             if  skip_code < 1:
+                self.beamline['event_id'].append(self.num_events['total'])
+                self.beamline['time_s'].append(self.get_event_time(evt))
                 if 'mirror_pitch' in self.beamline['components']:
                     self.beamline['mirror_pitch']['RBV'].append(self.beamline['mirror_pitch']['det'](evt))
-                self.beamline['time_s'].append(self.get_event_time(evt))
                 for dg in ['dg1', 'dg2']:
                     if dg in self.beamline['components']:
                         x_position, total_intensity = self.get_beam_evt(dg)
